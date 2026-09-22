@@ -6,6 +6,82 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Riparazione Certificata Samsung | Intec Italia</title>
 <meta name="description" content="Centro riparazioni Samsung certificato a Cologno Monzese. Prenota online in 4 minuti. Ritiro a domicilio disponibile. Ricambi originali, garanzia 365 giorni.">
+<link rel="canonical" href="https://assistenzacertificata.it/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="it_IT">
+<meta property="og:site_name" content="Assistenza Certificata Samsung – Intec Italia">
+<meta property="og:title" content="Riparazione Certificata Samsung | Intec Italia">
+<meta property="og:description" content="Centro riparazioni Samsung certificato a Cologno Monzese. Prenota online in 4 minuti. Ritiro a domicilio disponibile. Ricambi originali, garanzia 365 giorni.">
+<meta property="og:url" content="https://assistenzacertificata.it/">
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "LocalBusiness",
+ "@id": "https://assistenzacertificata.it/#business",
+ "name": "Intec Italia – Assistenza Certificata Samsung",
+ "description": "Centro di assistenza autorizzato Samsung a Cologno Monzese: riparazione di smartphone, tablet, PC, Galaxy Buds e Watch con ricambi originali e garanzia 365 giorni.",
+ "url": "https://assistenzacertificata.it/",
+ "telephone": "+390227306248",
+ "email": "assistenza@intecitalia.it",
+ "priceRange": "€€",
+ "address": {
+  "@type": "PostalAddress",
+  "streetAddress": "Via Peppino Rossi 13",
+  "addressLocality": "Cologno Monzese",
+  "postalCode": "20093",
+  "addressRegion": "MI",
+  "addressCountry": "IT"
+ },
+ "openingHoursSpecification": [
+  {
+   "@type": "OpeningHoursSpecification",
+   "dayOfWeek": [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday"
+   ],
+   "opens": "09:00",
+   "closes": "18:00"
+  }
+ ],
+ "areaServed": [
+  {
+   "@type": "City",
+   "name": "Cologno Monzese"
+  },
+  {
+   "@type": "City",
+   "name": "Milano"
+  },
+  {
+   "@type": "City",
+   "name": "Sesto San Giovanni"
+  },
+  {
+   "@type": "City",
+   "name": "Cinisello Balsamo"
+  },
+  {
+   "@type": "City",
+   "name": "Brugherio"
+  },
+  {
+   "@type": "City",
+   "name": "Monza"
+  },
+  {
+   "@type": "City",
+   "name": "Vimodrone"
+  }
+ ],
+ "sameAs": [
+  "https://maps.app.goo.gl/TQvyyGaxGUgyXqX19"
+ ]
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=Noto+Sans+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- Google Maps Places API – nuovo loader ufficiale 2025 -->
 <script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await(a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:"AIzaSyBvSy0CPzo7VDQm_tGV9bk_rRaklpPiFmM",v:"weekly",language:"it",region:"IT"});</script>
@@ -845,6 +921,30 @@ input[id="delAddrF"]::-webkit-credentials-auto-fill-button { visibility: hidden 
   .sb-contact a:hover { border-color: var(--black); background: var(--grey-lt); }
   .floating-help { display: none; }
 }
+
+/* ── PRECOMPILAZIONE MODELLO DA URL (?model= / ?device=) ── */
+#prenota { scroll-margin-top: 72px; }
+#modelInput.prefilled { background: var(--grey-lt); font-weight: 600; }
+.prefill-hint { font-size: 12.5px; color: var(--grey-txt); margin-top: 8px; line-height: 1.5; }
+.prefill-hint button { background: none; border: none; padding: 0; font-family: var(--sans); font-size: 12.5px;
+  font-weight: 700; color: var(--black); text-decoration: underline; cursor: pointer; }
+.variant-box { margin-top: 10px; }
+.variant-box .vb-lbl { font-size: 12.5px; font-weight: 600; color: var(--grey-lbl); margin-bottom: 8px; }
+.variant-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.prefill-hint .variant-chip { font-family: var(--sans); font-size: 13.5px; font-weight: 600; color: var(--black);
+  background: var(--white); border: 1.5px solid var(--grey-md); border-radius: var(--radius-btn);
+  padding: 9px 16px; cursor: pointer; text-decoration: none; }
+.prefill-hint .variant-chip:hover { border-color: var(--black); }
+.home-links { border-top: 1px solid var(--grey-md); background: var(--white); padding: 28px 20px 96px; }
+.hl-wrap { max-width: 1080px; margin: 0 auto; }
+.hl-title { font-size: 11.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--grey-txt); margin-bottom: 12px; }
+.hl-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.hl-nav a { font-size: 13.5px; font-weight: 600; color: var(--black); text-decoration: none; background: var(--grey-lt);
+  padding: 8px 15px; border-radius: var(--radius-btn); }
+.hl-nav a:hover { background: var(--grey-md); }
+.hl-addr { font-size: 12.5px; color: var(--grey-txt); }
+.hl-addr a { color: var(--grey-lbl); }
+.prefill-hint .variant-chip.sel { background: var(--black); border-color: var(--black); color: var(--white); }
 </style>
 </head>
 <body>
@@ -895,7 +995,7 @@ input[id="delAddrF"]::-webkit-credentials-auto-fill-button { visibility: hidden 
   </div>
 
   <!-- STEP BAR -->
-  <div class="step-bar">
+  <div class="step-bar" id="prenota">
     <div class="step-item active" id="si1"><div class="step-dot">1</div><div class="step-lbl">Servizio</div></div>
     <div class="step-item" id="si2"><div class="step-dot">2</div><div class="step-lbl">Dispositivo</div></div>
     <div class="step-item" id="si3"><div class="step-dot">3</div><div class="step-lbl">Problema</div></div>
@@ -1326,6 +1426,20 @@ input[id="delAddrF"]::-webkit-credentials-auto-fill-button { visibility: hidden 
 
 </aside>
 </div><!-- /page-desktop -->
+
+<footer class="home-links">
+  <div class="hl-wrap">
+    <div class="hl-title">Riparazioni e prezzi</div>
+    <nav class="hl-nav" aria-label="Pagine di approfondimento">
+      <a href="/riparazione-smartphone-samsung/">Riparazione smartphone Samsung</a>
+      <a href="/riparazione-smartphone-samsung/galaxy-s/">Riparazione Galaxy S</a>
+      <a href="/riparazione-smartphone-samsung/galaxy-s/s26/">Riparazione Galaxy S26</a>
+      <a href="/listino-prezzi-samsung/">Listino prezzi</a>
+    </nav>
+    <div class="hl-addr">Intec Italia — Via Peppino Rossi 13, 20093 Cologno Monzese (MI) ·
+      <a href="/privacy.html">Privacy e Termini</a></div>
+  </div>
+</footer>
 
 <a href="tel:+393938281376" class="floating-help">📞<span class="fh-label">&nbsp;Serve aiuto?</span></a>
 
@@ -2116,7 +2230,7 @@ function categorizeModel(name) {
   return 'Smartphone';
 }
 
-(async function loadModelsFromSupabase() {
+window.MODELS_READY = (async function loadModelsFromSupabase() {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/price_list?select=device_model&order=device_model.asc`,
@@ -2133,10 +2247,11 @@ function categorizeModel(name) {
       seen.add(name);
       const cat = categorizeModel(name);
       if (!MDL[cat]) MDL[cat] = [];
-      // Aggiungi solo se non già presente (evita duplicati col MDL statico)
-      if (!MDL[cat].some(x => x.n === name)) {
-        MDL[cat].push({ n: name, h: '' });
-      }
+      // Aggiungi solo se non già presente (evita duplicati col MDL statico).
+      // db:true = nome presente nel listino Supabase (serve al preventivo automatico)
+      const existing = MDL[cat].find(x => x.n === name);
+      if (existing) existing.db = true;
+      else MDL[cat].push({ n: name, h: '', db: true });
     });
 
     // Riordina ogni categoria alfabeticamente
@@ -2164,6 +2279,89 @@ function filterModels(inp) {
   sg.classList.add('show');
 }
 function pickModel(n){document.getElementById('modelInput').value=n;S.model=n;document.getElementById('modelSugg').classList.remove('show');}
+
+// ─── PRECOMPILAZIONE DA URL ──────────────────
+// /prenota.html?model=Galaxy%20S26  → categoria + modello già selezionati
+// /prenota.html?device=Smartphone   → solo categoria selezionata
+// Se il modello esiste in più tagli di memoria, l'utente sceglie la variante:
+// il nome esatto serve al calcolo automatico del preventivo.
+(async function prefillFromUrl(){
+  const params = new URLSearchParams(location.search);
+  const model  = (params.get('model')  || '').trim();
+  const device = (params.get('device') || '').trim();
+  if (!model && !device) return;
+
+  const input = document.getElementById('modelInput');
+  if (!input) return;
+
+  const cat = model ? categorizeModel(model) : device;
+  const devEl = [...document.querySelectorAll('.device-item')]
+    .find(d => d.querySelector('.dev-name').textContent.trim() === cat);
+  if (devEl) pickDevice(cat, '', devEl);
+  if (!model) return;
+
+  try { await window.MODELS_READY; } catch(e) {}
+
+  const norm  = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const strip = s => s
+    .replace(/\s*\(\s*\d+\s*(gb|tb)\s*\)/ig, '')
+    .replace(/\s+\d+\s*(gb|tb)\b/ig, '')
+    .replace(/\s+5g$/i, '');
+  const target = norm(model);
+
+  const all   = MDL[cat] || [];
+  const cands = all.filter(x => norm(x.n) === target || norm(strip(x.n)) === target);
+  const inDb  = cands.filter(x => x.db);
+  const pool  = inDb.length ? inDb : cands;
+  const exact = pool.find(x => norm(x.n) === target);
+
+  const group = input.closest('.form-group');
+  const hint  = document.createElement('div');
+  hint.className = 'prefill-hint';
+
+  function lock(name) {
+    pickModel(name);
+    input.setAttribute('readonly', '');
+    input.classList.add('prefilled');
+  }
+  function unlock() {
+    input.removeAttribute('readonly');
+    input.classList.remove('prefilled');
+    input.value = ''; S.model = '';
+    hint.remove();
+    input.focus();
+  }
+
+  if (exact || pool.length === 1) {
+    lock((exact || pool[0]).n);
+    hint.innerHTML = 'Modello preselezionato. <button type="button">Cambia modello</button>';
+  } else if (pool.length > 1) {
+    input.value = ''; S.model = '';
+    input.placeholder = model + ' — scegli la memoria qui sotto';
+    hint.innerHTML =
+      '<div class="variant-box"><div class="vb-lbl">Quale versione del tuo ' + model + '?</div>' +
+      '<div class="variant-chips">' +
+      pool.map(x => '<button type="button" class="variant-chip" data-n="' + x.n.replace(/"/g, '&quot;') + '">' +
+                    ((x.n.match(/\(([^)]+)\)/) || [0, x.n])[1]).replace(/gb/i, 'GB').replace(/tb/i, 'TB') +
+                    '</button>').join('') +
+      '</div></div>' +
+      '<div style="margin-top:8px">Non sai quale? Scegline una: la verifichiamo noi in laboratorio. ' +
+      '<button type="button" class="chg">Cambia modello</button></div>';
+    hint.querySelectorAll('.variant-chip').forEach(b => b.addEventListener('click', () => {
+      hint.querySelectorAll('.variant-chip').forEach(c => c.classList.remove('sel'));
+      b.classList.add('sel');
+      pickModel(b.dataset.n);
+    }));
+  } else {
+    // modello non presente in elenco: lo scriviamo comunque, preventivo manuale
+    pickModel(model);
+    hint.innerHTML = 'Modello indicato dalla pagina di provenienza. <button type="button">Cambia modello</button>';
+  }
+
+  group.appendChild(hint);
+  const chg = hint.querySelector('.chg') || hint.querySelector('button:not(.variant-chip)');
+  if (chg) chg.addEventListener('click', unlock);
+})();
 document.addEventListener('click',e=>{if(!e.target.closest('.model-wrap'))document.getElementById('modelSugg').classList.remove('show');});
 
 // ─── PROBLEMS ────────────────────────────────
