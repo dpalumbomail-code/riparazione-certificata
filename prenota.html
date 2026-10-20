@@ -2679,5 +2679,735 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.step-panel').forEach(p => obs.observe(p, { attributes: true, attributeFilter: ['class'] }));
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════
+     UX BOOST v1 — Intec Italia · modulo prenotazione
+     Incollare SUBITO PRIMA di </body> in index.html e prenota.html
+     (dopo lo <script> principale). Per tornare alla versione precedente
+     basta cancellare tutto il blocco da questo commento a "FINE UX BOOST".
+
+     Cosa fa:
+     1. Nuovo ordine: Dispositivo → Problema (con prezzo) → Ritiro/data → Dati → Riepilogo
+     2. Ricerca modello tollerante (s24ultra, "s 24 plus", tab s9…), memoria con chip
+     3. Problemi raggruppati, adattati al modello (Fold/Flip), con prezzo accanto
+     4. Stima prezzo in tempo reale (stessa regola del Booking Handler)
+     5. Errori segnalati sul campo + scroll al primo errore
+     6. Bozza salvata sul dispositivo (solo dispositivo/problema, nessun dato personale)
+     7. Eventi GTM invariati + step_position e flow_version
+═══════════════════════════════════════════════════════════════════ -->
+<style>
+.ub-drop-item{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.ub-drop-item.kb,.ub-drop-item:hover{background:var(--grey-lt)}
+.ub-drop-item .ub-cat{font-size:11px;color:var(--grey-txt);white-space:nowrap}
+.ub-drop-free{color:var(--grey-lbl);font-style:italic}
+.ub-group{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--grey-txt);margin:14px 2px 8px}
+.ub-group:first-child{margin-top:0}
+.prob-tag .ub-pl{display:flex;flex-direction:column;line-height:1.3;flex:1;min-width:0}
+.prob-tag .ub-pl small{font-size:12px;color:var(--grey-txt);margin-top:2px}
+.prob-tag .ub-pp{font-size:13px;font-weight:700;color:var(--grey-lbl);margin-left:auto;white-space:nowrap;font-family:var(--mono)}
+.ub-price{border-radius:16px;background:var(--grey-lt);padding:14px 18px;margin:6px 0 18px;transition:background .2s;
+  position:sticky;bottom:12px;z-index:5;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.ub-price.ok{background:#E8F5EF}
+@media (max-width:480px){.ub-price .ub-p-note{font-size:12px}.ub-price .ub-p-amt{font-size:26px}}
+@media (max-width:859px){.ub-price{padding-right:68px}}  /* spazio per il pulsante telefono fisso */
+.ub-price .ub-p-lbl{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--grey-txt)}
+.ub-price .ub-p-amt{font-size:30px;font-weight:800;letter-spacing:-.5px;margin:4px 0 2px;color:var(--black)}
+.ub-price .ub-p-msg{font-size:15px;font-weight:700;margin:4px 0 2px;color:var(--black)}
+.ub-price .ub-p-note{font-size:12.5px;color:var(--grey-lbl);line-height:1.5}
+.ub-sum{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--grey-lt);border-radius:14px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:var(--grey-lbl)}
+.ub-sum strong{color:var(--black)}
+.ub-sum button{background:none;border:none;font:inherit;font-weight:700;color:var(--black);text-decoration:underline;cursor:pointer;padding:0}
+.step-item.ub-nav{cursor:pointer}
+.step-item.ub-nav:hover .step-dot{box-shadow:0 0 0 4px rgba(28,28,28,.12)}
+.step-item.ub-nav:hover .step-lbl{color:var(--black);text-decoration:underline}
+.step-item:focus-visible{outline:2px solid var(--black);outline-offset:4px;border-radius:8px}
+.ub-recap-h{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 6px;
+  font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--black);border-top:1px solid var(--white)}
+.ub-recap-h:first-child{border-top:none}
+.ub-recap-h button{font-family:var(--sans);font-size:12.5px;font-weight:700;text-transform:none;letter-spacing:0;
+  background:var(--white);color:var(--black);border:1.5px solid var(--grey-md);border-radius:50px;padding:5px 12px;cursor:pointer}
+.ub-recap-h button:hover{border-color:var(--black)}
+.ub-draft{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;background:#FFF8E6;color:#7A4500;border-radius:14px;padding:12px 14px;margin-bottom:18px;font-size:13.5px;line-height:1.45}
+.ub-draft div{display:flex;gap:8px}
+.ub-draft button{font-family:var(--sans);font-size:13px;font-weight:700;border-radius:50px;padding:7px 14px;cursor:pointer;border:1.5px solid #7A4500;background:transparent;color:#7A4500}
+.ub-draft button.pri{background:#1C1C1C;border-color:#1C1C1C;color:#fff}
+input.ub-ok{border-color:var(--success)}
+</style>
+<script>
+(function UXBoost(){
+  'use strict';
+  // Sicurezza: se il form principale non è presente o è cambiato, il modulo non fa nulla
+  if (typeof S === 'undefined' || typeof next !== 'function' || !document.getElementById('step1')) return;
+
+  const FLOW_VERSION = 'v2';
+  const ORDER = [2, 3, 1, 4, 6];                       // nuovo ordine degli step (id originali)
+  const LABELS = { 2:'Dispositivo', 3:'Problema', 1:'Ritiro', 4:'Dati', 6:'Conferma' };
+  const BAR_ID = { 2:'si2', 3:'si3', 1:'si1', 4:'si4', 6:'si5' };
+  const pos = n => ORDER.indexOf(n);
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const euro = v => '€ ' + Number(v).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ═══ 1. NUOVO ORDINE DEGLI STEP ═══════════════════════════════════
+  ORDER.forEach((n, i) => { PROG[n] = Math.round((i + 1) / ORDER.length * 100); });
+
+  // barra in alto: riordina e rinumera i pallini
+  const bar = document.querySelector('.step-bar');
+  ORDER.forEach((n, i) => {
+    const el = $(BAR_ID[n]); if (!el) return;
+    bar.appendChild(el);
+    el.querySelector('.step-lbl').textContent = LABELS[n];
+    el.querySelector('.step-dot').textContent = n === 6 ? '✓' : String(i + 1);
+  });
+  updateBar = function (n) {
+    const p = pos(n);
+    ORDER.forEach((id, i) => {
+      const el = $(BAR_ID[id]); if (!el) return;
+      el.classList.remove('active', 'done');
+      if (p < 0 || i < p) el.classList.add('done');
+      else if (i === p) el.classList.add('active');
+    });
+  };
+
+  // intestazioni e pulsanti di ogni step
+  function wire(stepId, backTo, fwdTo, title) {
+    const panel = $('step' + stepId); if (!panel) return;
+    const back = panel.querySelector('.step-hdr-back');
+    if (back) {
+      if (backTo) { back.style.visibility = ''; back.onclick = () => goTo(backTo); }
+      else { back.style.visibility = 'hidden'; back.onclick = null; }
+    }
+    const cnt = panel.querySelector('.step-hdr-count');
+    if (cnt) cnt.textContent = '[' + (pos(stepId) + 1) + '/' + ORDER.length + ']';
+    if (title) { const t = panel.querySelector('.step-hdr-title'); if (t) t.textContent = title; }
+    if (fwdTo) panel.querySelectorAll('.card > .btn-primary, .card > div > .btn-primary').forEach(b => {
+      if (b.id !== 'btnConfirm') b.onclick = () => goTo(fwdTo);
+    });
+  }
+  wire(2, null, 3, 'Il tuo dispositivo');
+  wire(3, 2, 1, 'Il problema');
+  wire(1, 3, 4, 'Ritiro e appuntamento');
+  wire(4, 1, 6);
+  wire(6, 4, null);
+  const s1title = document.querySelector('#step1 .card-title');
+  if (s1title) s1title.textContent = 'Come ci fai avere il dispositivo?';
+
+  // navigazione: valida solo andando avanti, poi riusa la next() originale
+  const origNext = next;
+  function goTo(n, opts) {
+    opts = opts || {};
+    const from = S.step;
+    if (pos(n) > pos(from) && !validate(from)) return false;
+    if (pos(n) > pos(from)) persistDraft();
+    S.step = n;                     // evita la validazione numerica della next() originale
+    origNext(n);
+    afterNav(n);
+    navAfter(n, opts);
+    return true;
+  }
+  window.ubGoTo = goTo;
+  next = function (n) {             // eventuali chiamate residue a next() seguono il nuovo ordine
+    if (n === 7 || !ORDER.includes(n)) return origNext(n);
+    return goTo(n);
+  };
+
+  function afterNav(n) {
+    if (n === 3) updatePriceCard();
+    if (n === 1) renderSummary();
+  }
+
+  // ═══ 1b. NAVIGAZIONE LIBERA TRA GLI STEP ══════════════════════════
+  // · barra in alto cliccabile sugli step già visitati
+  // · "Modifica" su ogni blocco del riepilogo + "Torna al riepilogo" sugli altri step
+  // · tasto Indietro del browser/telefono = step precedente (non esce più dalla pagina)
+  let maxPos = 0;                                  // step più avanzato raggiunto
+  let confirmed = false;
+  const useHistory = window.self === window.top && !!(window.history && history.pushState);
+
+  // salto a uno step: indietro sempre libero; avanti solo su step già visitati,
+  // ricontrollando tutti quelli intermedi (es. cambio negozio → domicilio richiede l'indirizzo)
+  function jump(n, opts) {
+    opts = opts || {};
+    if (confirmed || n === S.step || !ORDER.includes(n)) return false;
+    const tp = pos(n), cp = pos(S.step);
+    if (tp > maxPos) return false;
+    if (tp < cp) return goTo(n, opts);
+    if (!validate(S.step)) { syncHistory(); return false; }
+    for (let i = cp + 1; i < tp; i++) {
+      const st = ORDER[i];
+      if (!check(st)) {                           // primo step incompleto: ci si ferma lì
+        goTo(st, { replace: opts.fromPop });
+        setTimeout(() => validate(st), 60);       // mostra di nuovo gli errori e scorre al campo
+        return false;
+      }
+    }
+    return goTo(n, opts);
+  }
+  window.ubJump = jump;
+
+  function navAfter(n, opts) {
+    maxPos = Math.max(maxPos, pos(n));
+    if (useHistory && !opts.fromPop) {
+      try { (opts.replace ? history.replaceState : history.pushState).call(history, { ubStep: n }, ''); } catch (_) {}
+    }
+    refreshNav();
+  }
+  function syncHistory() {
+    if (useHistory) try { history.replaceState({ ubStep: S.step }, ''); } catch (_) {}
+  }
+
+  // barra in alto
+  ORDER.forEach(id => {
+    const el = $(BAR_ID[id]); if (!el) return;
+    el.setAttribute('role', 'button');
+    el.addEventListener('click', () => jump(id));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); jump(id); } });
+  });
+
+  // pulsante "Torna al riepilogo" sotto il Continua di ogni step
+  ORDER.filter(id => id !== 6).forEach(id => {
+    const cont = [...$('step' + id).querySelectorAll('.btn-primary')].pop(); if (!cont) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn-secondary ub-torecap'; b.textContent = 'Salva e torna al riepilogo';
+    b.style.display = 'none';
+    b.onclick = () => jump(6);
+    cont.after(b);
+  });
+
+  function refreshNav() {
+    ORDER.forEach(id => {
+      const el = $(BAR_ID[id]); if (!el) return;
+      const ok = !confirmed && pos(id) <= maxPos && id !== S.step;
+      el.classList.toggle('ub-nav', ok);
+      el.tabIndex = ok ? 0 : -1;
+      el.title = ok ? 'Vai a: ' + LABELS[id] : '';
+    });
+    const showRecap = !confirmed && maxPos >= pos(6);
+    document.querySelectorAll('.ub-torecap').forEach(b => { b.style.display = showRecap ? '' : 'none'; });
+  }
+
+  // riepilogo: intestazione con "Modifica" per ogni gruppo di righe
+  const RECAP_STEP = [
+    [/^servizio|^data/i, 1], [/dispositivo|seriale/i, 2],
+    [/^problema|garanzia|preventivo/i, 3],
+  ];
+  const stepOfRow = k => { for (const [re, st] of RECAP_STEP) if (re.test(k)) return st; return 4; };
+  const origRenderRecap = renderRecap;
+  renderRecap = function () {
+    origRenderRecap();
+    let last = null;
+    document.querySelectorAll('#recapGrid .recap-row').forEach(row => {
+      const k = row.querySelector('.recap-k').textContent.replace(/[^\p{L}\s/]/gu, '').trim();
+      const st = k === 'Pagamento' ? last : stepOfRow(k);
+      if (st === last) return;
+      last = st;
+      const h = document.createElement('div');
+      h.className = 'ub-recap-h';
+      h.innerHTML = `<span>${LABELS[st] === 'Ritiro' ? 'Ritiro e appuntamento' : (st === 4 ? 'I tuoi dati' : LABELS[st])}</span>` +
+        `<button type="button">Modifica</button>`;
+      h.querySelector('button').onclick = () => jump(st);
+      row.before(h);
+    });
+  };
+
+  // tasto Indietro / Avanti del browser
+  if (useHistory) {
+    try { history.replaceState({ ubStep: ORDER[0] }, ''); } catch (_) {}   // il modulo parte dallo step Dispositivo
+    window.addEventListener('popstate', e => {
+      const st = e.state && e.state.ubStep;
+      if (!st) return;
+      if (confirmed) { history.back(); return; }   // dopo la conferma: si esce, non si torna al riepilogo
+      if (st === S.step) return;
+      if (!jump(st, { fromPop: true })) syncHistory();
+    });
+  }
+
+  // eventi GTM: stessi nomi e parametri di prima + posizione reale nel nuovo flusso
+  const origTrack = trackStep;
+  trackStep = function (n) {
+    if (!STEP_NAMES[n]) return;
+    dlPush(Object.assign({
+      event: 'booking_step', step_number: n, step_name: STEP_NAMES[n],
+      step_position: pos(n) + 1, flow_version: FLOW_VERSION,
+    }, bookingPayload()));
+  };
+  // inizio funnel: prima interazione reale con lo step Dispositivo (categoria, modello, memoria o Continua).
+  // Vale anche quando il modello arriva già precompilato da una pagina SEO (?model=).
+  function markStart(entry) {
+    if (window._bookingStarted) return;
+    window._bookingStarted = true;
+    dlPush({ event: 'booking_start', service_type: null, entry: entry, flow_version: FLOW_VERSION });
+  }
+  $('step2').addEventListener('click', e => {
+    if (e.target.closest('.device-item')) markStart('device');
+    else if (e.target.closest('.variant-chip, .sugg-item')) markStart('model');
+    else if (e.target.closest('.btn-primary')) markStart('continue');
+  }, true);
+  $('step2').addEventListener('input', () => markStart('model'), true);
+  const origPickDevice = pickDevice;
+  pickDevice = function (n, e, el) {
+    const r = origPickDevice(n, e, el);
+    clearVariants();
+    return r;
+  };
+
+  // mostra subito lo step Dispositivo
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  $('step2').classList.add('active');
+  S.step = 2;
+  updateBar(2);
+  $('pb').style.width = PROG[2] + '%';
+
+  // ═══ 2. RICERCA MODELLO TOLLERANTE ════════════════════════════════
+  const MEM_RE = [/\s*\(\s*\d+\s*(gb|tb)\s*\)/i, /\s+\d+\s*(gb|tb)\b/i];
+  const tidy = s => String(s).replace(/\s+/g, ' ').trim();
+  const baseOf = n => { let b = n; MEM_RE.forEach(r => { b = b.replace(r, ''); }); return tidy(b); };
+  const memOf = n => { const m = n.match(/(\d+)\s*(gb|tb)/i); return m ? m[1] + ' ' + m[2].toUpperCase() : null; };
+  const compact = s => String(s).toLowerCase()
+    .replace(/samsung|galaxy/g, '').replace(/\bplus\b/g, '+').replace(/[^a-z0-9+]/g, '');
+  const memBytes = v => { const m = memOf(v); if (!m) return 0; const [x, u] = m.split(' '); return +x * (u === 'TB' ? 1024 : 1); };
+
+  // catalogo raggruppato per modello base, ricostruito quando i modelli Supabase sono pronti
+  let CATALOG = [];
+  function buildCatalog() {
+    const map = new Map();
+    Object.keys(MDL).forEach(cat => (MDL[cat] || []).forEach(x => {
+      const base = baseOf(x.n);
+      if (/^galaxy tab|tab /i.test(base) && cat === 'Smartphone') return;   // evita doppioni tra categorie
+      const key = cat + '|' + base.toLowerCase();
+      if (!map.has(key)) map.set(key, { cat, base, key: compact(base), variants: [] });
+      const g = map.get(key);
+      if (!g.variants.includes(x.n)) g.variants.push(x.n);
+    }));
+    CATALOG = [...map.values()];
+    CATALOG.forEach(g => g.variants.sort((a, b) => memBytes(a) - memBytes(b)));
+  }
+  buildCatalog();
+  if (window.MODELS_READY) window.MODELS_READY.then(buildCatalog).catch(() => {});
+
+  function search(q) {
+    const qc = compact(q);
+    if (!qc) return [];
+    const tokens = q.toLowerCase().replace(/samsung|galaxy/g, ' ').replace(/\bplus\b/g, '+')
+      .split(/[^a-z0-9+]+/).filter(Boolean);
+    const cur = S.device;
+    const scored = [];
+    CATALOG.forEach(g => {
+      let s = -1;
+      if (g.key === qc) s = 100;
+      else if (g.key.startsWith(qc)) s = 80 - (g.key.length - qc.length) * 0.1;
+      else if (g.key.includes(qc)) s = 60;
+      else if (tokens.length && tokens.every(t => g.key.includes(t))) s = 40;
+      if (s < 0) return;
+      if (cur && g.cat === cur) s += 5;
+      scored.push({ g, s });
+    });
+    scored.sort((a, b) => b.s - a.s || a.g.base.localeCompare(b.g.base));
+    return scored.slice(0, 12).map(x => x.g);
+  }
+
+  const input = $('modelInput');
+  const sugg = $('modelSugg');
+  let kbIndex = -1, lastResults = [];
+
+  function renderSugg(q) {
+    lastResults = search(q);
+    kbIndex = -1;
+    if (!q.trim()) { sugg.classList.remove('show'); return; }
+    let html = lastResults.map((g, i) =>
+      `<div class="sugg-item ub-drop-item" data-i="${i}"><span>${esc(g.base)}` +
+      (g.variants.length > 1 ? `<small>${g.variants.length} versioni di memoria</small>` : '') +
+      `</span><span class="ub-cat">${esc(g.cat)}</span></div>`).join('');
+    html += `<div class="sugg-item ub-drop-item ub-drop-free" data-free="1"><span>Non trovo il mio modello: usa “${esc(q.trim())}”` +
+      `<small>Il tecnico ti invierà il preventivo dopo la diagnosi</small></span></div>`;
+    sugg.innerHTML = html;
+    sugg.classList.add('show');
+  }
+
+  filterModels = function (inp) {
+    S.model = inp.value;
+    inp.classList.remove('ub-ok');
+    clearVariants();
+    hideErr('modelErr');
+    renderSugg(inp.value);
+  };
+
+  sugg.addEventListener('mousedown', e => {
+    const it = e.target.closest('.sugg-item'); if (!it) return;
+    e.preventDefault();
+    if (it.dataset.free) { chooseFree(); return; }
+    chooseGroup(lastResults[+it.dataset.i]);
+  });
+  input.addEventListener('keydown', e => {
+    if (!sugg.classList.contains('show')) return;
+    const items = [...sugg.querySelectorAll('.sugg-item')];
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      kbIndex = (kbIndex + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items.forEach((x, i) => x.classList.toggle('kb', i === kbIndex));
+      items[kbIndex].scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const it = items[kbIndex >= 0 ? kbIndex : 0];
+      if (!it) return;
+      if (it.dataset.free) chooseFree(); else chooseGroup(lastResults[+it.dataset.i]);
+    } else if (e.key === 'Escape') sugg.classList.remove('show');
+  });
+
+  function selectCategory(cat) {
+    if (S.device === cat) return;
+    const el = [...document.querySelectorAll('.device-item')]
+      .find(d => d.querySelector('.dev-name').textContent.trim() === cat);
+    if (el) pickDevice(cat, '', el);
+  }
+  function chooseGroup(g) {
+    if (!g) return;
+    sugg.classList.remove('show');
+    selectCategory(g.cat);                   // nota: pickDevice svuota il campo, quindi lo riscriviamo dopo
+    if (g.variants.length === 1) { setModel(g.variants[0]); return; }
+    input.value = g.base; S.model = '';
+    showVariants(g);
+  }
+  function chooseFree() {
+    sugg.classList.remove('show');
+    S.model = tidy(input.value);
+    input.value = S.model;
+    if (!S.device) selectCategory('Smartphone');
+    input.value = S.model;
+    onModelChange();
+  }
+  function setModel(name) {
+    pickModel(name);                         // campo e S.model = nome ESATTO del listino (serve al preventivo)
+    input.classList.add('ub-ok');
+    hideErr('ubModelErr');
+    hideErr('modelErr');
+    onModelChange();
+  }
+
+  let varBox = null;
+  function clearVariants() { if (varBox) { varBox.remove(); varBox = null; } }
+  function showVariants(g) {
+    clearVariants();
+    varBox = document.createElement('div');
+    varBox.className = 'prefill-hint';
+    varBox.innerHTML = `<div class="variant-box"><div class="vb-lbl">Quanta memoria ha il tuo ${esc(g.base)}?</div>
+      <div class="variant-chips">${g.variants.map(v =>
+        `<button type="button" class="variant-chip" data-n="${esc(v)}">${esc(memOf(v) || tidy(v))}</button>`).join('')}</div></div>
+      <div style="margin-top:8px">Non lo sai? Lo trovi in Impostazioni › Assistenza dispositivo › Memoria, oppure scegline una: la verifichiamo noi.</div>`;
+    varBox.querySelectorAll('.variant-chip').forEach(b => b.addEventListener('click', () => {
+      varBox.querySelectorAll('.variant-chip').forEach(c => c.classList.remove('sel'));
+      b.classList.add('sel');
+      setModel(b.dataset.n);
+    }));
+    input.closest('.model-wrap').after(varBox);
+  }
+
+  // ═══ 3. PREZZI DAL LISTINO ════════════════════════════════════════
+  const priceCache = {};                     // modello → { problem_type: prezzo }
+  let priceModel = null;
+  async function loadPrices(model) {
+    if (!model) return null;
+    if (priceCache[model]) return priceCache[model];
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/price_list?select=problem_type,price&device_model=eq.${encodeURIComponent(model)}`,
+        { headers: { apikey: SUPABASE_ANON, Authorization: 'Bearer ' + SUPABASE_ANON } });
+      if (!r.ok) return null;
+      const rows = await r.json();
+      const m = {};
+      (Array.isArray(rows) ? rows : []).forEach(x => { if (x.price) m[x.problem_type] = parseFloat(x.price); });
+      priceCache[model] = m;
+      return m;
+    } catch (_) { return null; }
+  }
+  function onModelChange() {
+    persistDraft();
+    priceModel = S.model;
+    loadPrices(S.model).then(() => { if (S.step === 3) { renderProbs(); updatePriceCard(); } });
+  }
+
+  // stessa regola di lookupQuoteAndRecap() e del Booking Handler n8n
+  function estimate() {
+    const prices = priceCache[S.model];
+    const pr = S.problems || [];
+    if (S.warranty) return { kind: 'warranty' };
+    if (!pr.length) return { kind: 'empty' };
+    if (!prices || !Object.keys(prices).length) return { kind: 'manual', why: 'model' };
+    let look = null, surcharge = false;
+    if (pr.length === 1) look = pr[0];
+    else if (pr.length === 2 && pr.includes('Batteria')) {
+      const other = pr.find(p => p !== 'Batteria');
+      if (['Schermo Rotto', 'Cover Posteriore', 'Connettore Di Ricarica'].includes(other)) { look = other; surcharge = true; }
+    }
+    if (!look) return { kind: 'manual', why: 'multi' };
+    if (prices[look] == null) return { kind: 'manual', why: 'problem' };
+    return { kind: 'price', amount: prices[look] + (surcharge ? 30 : 0), surcharge };
+  }
+
+  let priceBox = null;
+  function updatePriceCard() {
+    if (!priceBox) {
+      priceBox = document.createElement('div');
+      priceBox.className = 'ub-price';
+      priceBox.setAttribute('aria-live', 'polite');
+      $('probGrid').after(priceBox);
+    }
+    const e = estimate();
+    let h = '<div class="ub-p-lbl">Stima della riparazione</div>';
+    priceBox.classList.toggle('ok', e.kind === 'price');
+    if (e.kind === 'price') {
+      h += `<div class="ub-p-amt">${euro(e.amount)}</div>
+        <div class="ub-p-note">${e.surcharge ? 'Comprende 30 € per la sostituzione della batteria. ' : ''}Prezzo indicativo da listino, confermato dal tecnico dopo la diagnosi.
+        Ricambi originali, garanzia 365 giorni. <strong>Paghi solo a riparazione ultimata.</strong></div>`;
+    } else if (e.kind === 'empty') {
+      h += '<div class="ub-p-msg">Seleziona il problema</div><div class="ub-p-note">Vedrai subito il prezzo indicativo, quando è a listino.</div>';
+    } else if (e.kind === 'warranty') {
+      h += '<div class="ub-p-msg">Dispositivo in garanzia Samsung</div><div class="ub-p-note">Il tecnico verifica la copertura: se la riparazione non rientra in garanzia ti inviamo il preventivo prima di procedere.</div>';
+    } else {
+      const msg = e.why === 'multi' ? 'Più interventi: preventivo personalizzato' : 'Preventivo dopo la diagnosi';
+      h += `<div class="ub-p-msg">${msg}</div><div class="ub-p-note">Il tecnico ti invia il preventivo entro 2 ore lavorative dalla diagnosi. Se non lo approvi non paghi nulla.</div>`;
+    }
+    priceBox.innerHTML = h;
+    persistDraft();
+  }
+  const origTogWarranty = togWarranty;
+  togWarranty = function () { origTogWarranty(); updatePriceCard(); };
+
+  // riepilogo in cima allo step Ritiro
+  function renderSummary() {
+    const card = document.querySelector('#step1 .card'); if (!card) return;
+    let box = $('ubSum');
+    if (!box) { box = document.createElement('div'); box.id = 'ubSum'; box.className = 'ub-sum'; card.insertBefore(box, card.querySelector('.service-grid')); }
+    const e = estimate();
+    const right = e.kind === 'price' ? euro(e.amount) : (e.kind === 'warranty' ? 'In garanzia' : 'Preventivo dopo diagnosi');
+    box.innerHTML = `<span><strong>${esc(tidy(S.model || S.device || ''))}</strong> · ${esc((S.problems || []).join(', '))}<br>
+      <button type="button">Modifica</button></span><strong>${esc(right)}</strong>`;
+    box.querySelector('button').onclick = () => goTo(3);
+  }
+
+  // ═══ 4. PROBLEMI RAGGRUPPATI E ADATTATI AL MODELLO ════════════════
+  const GROUPS = [
+    ['Schermo e scocca', ['Schermo Rotto', 'Schermo Principale Rotto', 'Schermo Esterno Rotto', 'Cover Posteriore']],
+    ['Batteria e accensione', ['Batteria', 'Non Si Carica', 'Connettore Di Ricarica', 'Non Si Accende', 'Tasto Accensione', 'Surriscaldamento']],
+    ['Fotocamere, audio e tasti', ['Fotocamera Posteriore', 'Fotocamera Frontale', 'Altoparlante', 'Microfono', 'Tasti Volume', 'Connessione WiFi/Bluetooth']],
+    ['Altro', ['Danno Da Liquidi', 'Altro']],
+  ];
+  const HINTS = {
+    'Schermo Rotto': 'Vetro crepato, macchie, righe o touch che non risponde',
+    'Schermo Principale Rotto': 'Lo schermo grande interno, quello che si piega',
+    'Schermo Esterno Rotto': 'Lo schermo piccolo esterno, visibile a dispositivo chiuso',
+    'Cover Posteriore': 'Vetro posteriore rotto o staccato',
+    'Batteria': 'Si scarica in fretta, si spegne da solo o è gonfia',
+    'Non Si Carica': 'Il cavo è inserito ma la carica non parte',
+    'Connettore Di Ricarica': 'Il cavo entra male o fa falso contatto',
+    'Non Si Accende': 'Nessun segno di vita, nemmeno collegato al caricatore',
+    'Danno Da Liquidi': 'È caduto in acqua o si è bagnato',
+    'Altro': 'Descrivilo nel campo qui sotto',
+  };
+  renderProbs = function () {
+    const cat = S.device;
+    let list = PROBS[cat] || PROBS.default;
+    const isDefault = !PROBS[cat];
+    const foldable = /fold|flip/i.test(S.model || '');
+    if (isDefault) list = list.filter(p => foldable
+      ? p.l !== 'Schermo Rotto'
+      : !['Schermo Principale Rotto', 'Schermo Esterno Rotto'].includes(p.l));
+    const valid = new Set(list.map(p => p.l));
+    S.problems = (S.problems || []).filter(p => valid.has(p));      // conserva le scelte tornando indietro
+    const prices = priceCache[S.model] || {};
+    const g = $('probGrid');
+    g.innerHTML = '';
+    const tag = p => {
+      const el = document.createElement('div');
+      el.className = 'prob-tag' + (S.problems.includes(p.l) ? ' sel' : '');
+      el.setAttribute('role', 'checkbox');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-checked', S.problems.includes(p.l));
+      const pr = prices[p.l];
+      el.innerHTML = `<span>${p.i}</span><div class="ub-pl">${esc(p.l)}${HINTS[p.l] ? `<small>${esc(HINTS[p.l])}</small>` : ''}</div>` +
+        (pr != null && !S.warranty ? `<b class="ub-pp">${euro(pr)}</b>` : '');
+      const toggle = () => {
+        el.classList.toggle('sel');
+        const on = el.classList.contains('sel');
+        el.setAttribute('aria-checked', on);
+        if (on) { if (!S.problems.includes(p.l)) S.problems.push(p.l); }
+        else S.problems = S.problems.filter(x => x !== p.l);
+        updatePriceCard();
+      };
+      el.onclick = toggle;
+      el.onkeydown = ev => { if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); toggle(); } };
+      return el;
+    };
+    if (isDefault) {
+      const used = new Set();
+      GROUPS.forEach(([title, labels]) => {
+        const items = list.filter(p => labels.includes(p.l));
+        if (!items.length) return;
+        const h = document.createElement('div'); h.className = 'ub-group'; h.textContent = title; g.appendChild(h);
+        items.forEach(p => { used.add(p.l); g.appendChild(tag(p)); });
+      });
+      list.filter(p => !used.has(p.l)).forEach(p => g.appendChild(tag(p)));
+    } else list.forEach(p => g.appendChild(tag(p)));
+    if (priceModel !== S.model) onModelChange();
+    updatePriceCard();
+  };
+
+  // ═══ 5. ERRORI SUL CAMPO ══════════════════════════════════════════
+  function showErrEl(id) { const e = $(id); if (e) { e.style.display = 'block'; e.classList.add('show'); } }
+  function hideErr(id) { const e = $(id); if (e) { e.style.display = 'none'; e.classList.remove('show'); } }
+  // Correzione: all'avvio i .field-err ricevono display:none in linea, quindi la vecchia showErr
+  // (che aggiungeva solo la classe .show per 3,5 s) non li rendeva mai visibili.
+  showErr = function (id) {
+    showErrEl(id);
+    const field = $(id) && $(id).closest('.form-group') && $(id).closest('.form-group').querySelector('input');
+    if (field) field.classList.add('error');
+  };
+  // messaggi in pagina al posto degli alert()
+  function inlineMsg(id, anchor, text, before) {
+    let e = $(id);
+    if (!e) {
+      e = document.createElement('div'); e.id = id; e.className = 'field-err';
+      e.style.margin = '10px 0 0';
+      before ? anchor.before(e) : anchor.after(e);
+    }
+    e.textContent = text; showErrEl(id);
+    return false;
+  }
+  $('step1').addEventListener('click', e => {
+    if (e.target.closest('.service-card, .date-chip, .time-chip, .fascia-card')) hideErr('ubS1Err');
+  });
+  $('probGrid').addEventListener('click', () => hideErr('ubProbErr'));
+  document.querySelectorAll('.device-item').forEach(d => d.addEventListener('click', () => hideErr('ubModelErr')));
+  const RULES = {
+    fName:  [v => v.length > 0, 'fNameErr'],
+    lName:  [v => v.length > 0, 'lNameErr'],
+    emailF: [v => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), 'emailErr'],
+    phoneF: [v => v.replace(/\D/g, '').length >= 8, 'phoneErr'],
+    capF:   [v => /^\d{5}$/.test(v), 'capErr'],
+    provF:  [v => /^[A-Za-z]{2}$/.test(v), 'provErr'],
+    cityF:  [v => v.length > 0, 'cityErr'],
+    delCapF:  [v => /^\d{5}$/.test(v), 'delCapErr'],
+    delProvF: [v => /^[A-Za-z]{2}$/.test(v), 'delProvErr'],
+    delCityF: [v => v.length > 0, 'delCityErr'],
+  };
+  Object.entries(RULES).forEach(([id, [ok, errId]]) => {
+    const el = $(id); if (!el) return;
+    el.addEventListener('blur', () => {
+      const v = el.value.trim();
+      if (!v) return;                                   // campo vuoto: lo segnala il "Continua"
+      const good = ok(v);
+      el.classList.toggle('error', !good);
+      el.classList.toggle('ub-ok', good);
+      good ? hideErr(errId) : showErrEl(errId);
+    });
+    el.addEventListener('input', () => { el.classList.remove('error'); hideErr(errId); });
+  });
+  const origValidate = validate;
+  function check(step) {
+    if (step === 2) {
+      const m = input.value.trim();
+      const wrap = input.closest('.form-group');
+      const preChips = wrap.querySelectorAll('.prefill-hint .variant-chip');   // modello arrivato da una pagina SEO (?model=)
+      if (!m && preChips.length && !wrap.querySelector('.prefill-hint .variant-chip.sel'))
+        return inlineMsg('ubModelErr', preChips[0].closest('.prefill-hint'), 'Scegli la memoria del tuo dispositivo (se non la sai, scegline una: la verifichiamo noi).');
+      if (!m) return inlineMsg('ubModelErr', wrap.querySelector('#modelErr') || input, 'Scrivi il modello: bastano poche lettere, es. "S24" o "A55".');
+      if (varBox && !varBox.querySelector('.variant-chip.sel'))
+        return inlineMsg('ubModelErr', varBox, 'Scegli la memoria del dispositivo (se non la sai, scegline una: la verifichiamo noi).');
+      if (!S.device) {                                    // categoria dedotta dal modello invece dell'alert
+        const hit = CATALOG.find(g => g.variants.includes(m));
+        selectCategory(hit ? hit.cat : 'Smartphone');
+        input.value = m;
+      }
+    }
+    if (step === 3) {
+      const d = desc ? desc.value.trim() : '';
+      if (!(S.problems || []).length && !d)
+        return inlineMsg('ubProbErr', $('probGrid'), 'Seleziona almeno un problema, oppure descrivilo nel campo qui sotto.', true);
+    }
+    if (step === 1) {
+      const btn = $('step1').querySelector('.btn-primary');
+      if (!S.serviceType) return inlineMsg('ubS1Err', btn, 'Scegli se portarci il dispositivo in negozio o farlo ritirare a domicilio.', true);
+      if (!S.date) return inlineMsg('ubS1Err', btn, 'Scegli il giorno.', true);
+      if (!S.time) return inlineMsg('ubS1Err', btn, S.serviceType === 'home' ? 'Scegli la fascia oraria del ritiro.' : "Scegli l'orario dell'appuntamento.", true);
+    }
+    return origValidate(step);
+  }
+  validate = function (step) {
+    const ok = check(step);
+    if (!ok) setTimeout(() => {
+      const panel = $('step' + step);
+      const err = panel && [...panel.querySelectorAll('.field-err, #privErr')]
+        .find(e => e.style.display === 'block' || e.classList.contains('show'));
+      if (!err) return;
+      const grp = err.closest('.form-group') || err;
+      grp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const f = grp.querySelector && grp.querySelector('input, textarea');
+      if (f) f.focus({ preventScroll: true });
+    }, 30);
+    return ok;
+  };
+
+  // ═══ 6. BOZZA SALVATA (solo dati della riparazione) ═══════════════
+  const DRAFT_KEY = 'intec_booking_draft_v1';
+  const DRAFT_TTL = 7 * 24 * 3600 * 1000;
+  let draftReady = false;
+  function persistDraft() {
+    if (!draftReady) return;
+    try {
+      if (!S.device && !S.model) return;
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        t: Date.now(), device: S.device, model: S.model, problems: S.problems || [],
+        desc: ($('probDesc') || {}).value || '', warranty: !!S.warranty,
+      }));
+    } catch (_) {}
+  }
+  function clearDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch (_) {} }
+  function readDraft() {
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+      if (!d || Date.now() - d.t > DRAFT_TTL || !d.model) return null;
+      return d;
+    } catch (_) { return null; }
+  }
+  const desc = $('probDesc');
+  if (desc) desc.addEventListener('change', persistDraft);
+
+  function offerDraft() {
+    const d = readDraft();
+    const fromUrl = new URLSearchParams(location.search).get('model');
+    draftReady = true;
+    if (!d || fromUrl) return;
+    const card = document.querySelector('#step2 .card');
+    const box = document.createElement('div');
+    box.className = 'ub-draft';
+    box.innerHTML = `<span>Avevi iniziato una prenotazione: <strong>${esc(tidy(d.model))}</strong>${d.problems.length ? ' · ' + esc(d.problems.join(', ')) : ''}</span>
+      <div><button type="button" class="pri">Riprendi</button><button type="button">Ricomincia</button></div>`;
+    card.insertBefore(box, card.firstChild);
+    const [resume, restart] = box.querySelectorAll('button');
+    restart.onclick = () => { clearDraft(); box.remove(); };
+    resume.onclick = () => {
+      box.remove();
+      if (d.device) selectCategory(d.device);
+      setModel(d.model);
+      S.problems = d.problems.slice();
+      if (d.warranty && !S.warranty) togWarranty();
+      if (desc && d.desc) desc.value = d.desc;
+      goTo(3);
+    };
+  }
+  // a prenotazione confermata la bozza non serve più
+  new MutationObserver(() => {
+    if (!$('stepOK').classList.contains('active')) return;
+    clearDraft(); confirmed = true; refreshNav();
+  })
+    .observe($('stepOK'), { attributes: true, attributeFilter: ['class'] });
+
+  // l'eventuale precompilazione da URL (?model=) deve finire prima di offrire la bozza
+  Promise.resolve(window.MODELS_READY).catch(() => {}).then(() => setTimeout(() => {
+    if (S.model) onModelChange();
+    offerDraft();
+  }, 0));
+})();
+</script>
+<!-- FINE UX BOOST -->
+
 </body>
 </html>
